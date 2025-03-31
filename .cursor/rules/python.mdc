@@ -1,0 +1,9 @@
+---
+description: 
+globs: *.py
+alwaysApply: false
+---
+# use builtin types
+- use dict[str, Any], NEVER typing.Dict
+- use `from __future__ import annotations` when using 3.10+ specific annotations
+- aggressively minimal and pythonic

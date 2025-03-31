@@ -1,8 +1,9 @@
+use pyo3::prelude::IntoPyObject;
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::collections::HashMap;
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, IntoPyObject)]
 pub struct Package {
     pub name: String,
     pub version: String,
@@ -10,16 +11,16 @@ pub struct Package {
 }
 
 impl Package {
-    pub fn new(name: String, version: String) -> Self {
+    pub fn new(name: String, version: String, dependencies: Vec<String>) -> Self {
         Self {
             name,
             version,
-            dependencies: Vec::new(),
+            dependencies,
         }
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, IntoPyObject)]
 pub struct PackageFootprint {
     pub package: Package,
     pub total_size: u64,
@@ -40,7 +41,7 @@ impl PackageFootprint {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, IntoPyObject)]
 pub struct FileInfo {
     pub path: String,
     pub size: u64,
@@ -82,7 +83,7 @@ impl Ord for FileInfo {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, IntoPyObject)]
 pub struct PyPIMetadata {
     pub name: String,
     pub version: String,
@@ -91,5 +92,4 @@ pub struct PyPIMetadata {
     pub requires_python: Option<String>,
     pub requires_dist: Vec<String>,
     pub package_size: Option<u64>,
-    pub raw_data: HashMap<String, String>,
 }

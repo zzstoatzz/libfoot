@@ -1,50 +1,82 @@
+use crate::cache::fetch_pypi_metadata_cached;
 use crate::package::{FileInfo, Package, PackageFootprint, PyPIMetadata};
 use pyo3::prelude::*;
-use pyo3::types::PyDict;
 use reqwest::blocking::Client;
 use serde::Deserialize;
 use std::cmp::Reverse;
 use std::collections::{BinaryHeap, HashMap};
+use std::env;
 use std::io::Read;
 use std::path::Path;
 use tempfile::NamedTempFile;
 use zip::ZipArchive;
 
-const MAX_LARGEST_FILES: usize = 10;
+// Default value for maximum number of largest files to track
+const DEFAULT_MAX_FILES: usize = 10;
 
-#[pyclass]
+// Define user agent string for API requests
+const APP_USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
+
+// Read MAX_LARGEST_FILES from environment variable or use default
+/// Returns the maximum number of largest files to track.
+///
+/// Uses the LIBFOOT_MAX_FILES environment variable if set,
+/// otherwise falls back to DEFAULT_MAX_FILES (10).
+fn get_max_files() -> usize {
+    env::var("LIBFOOT_MAX_FILES")
+        .ok()
+        .and_then(|val| val.parse::<usize>().ok())
+        .unwrap_or(DEFAULT_MAX_FILES)
+}
+
 #[derive(Default)]
 pub struct PackageAnalyzer {
     client: Option<Client>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub struct PyPIResponse {
-    info: PyPIInfo,
-    urls: Vec<PyPIFileInfo>,
+    pub info: PyPIInfo,
+    pub urls: Vec<PyPIFileInfo>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub struct PyPIInfo {
-    name: String,
-    version: String,
-    summary: String,
-    requires_python: Option<String>,
-    requires_dist: Option<Vec<String>>,
-    project_urls: Option<HashMap<String, String>>,
+    pub name: String,
+    pub version: String,
+    pub summary: String,
+    pub requires_python: Option<String>,
+    pub requires_dist: Option<Vec<String>>,
+    pub project_urls: Option<HashMap<String, String>>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub struct PyPIFileInfo {
-    url: String,
-    packagetype: String,
-    size: u64,
+    pub url: String,
+    pub packagetype: String,
+    pub size: u64,
 }
 
 impl PackageAnalyzer {
+    pub fn new() -> Self {
+        Self {
+            client: Some(
+                Client::builder()
+                    .user_agent(APP_USER_AGENT)
+                    .build()
+                    .expect("Failed to build reqwest client"),
+            ),
+        }
+    }
+
     fn get_client(&mut self) -> &Client {
         if self.client.is_none() {
-            self.client = Some(Client::new());
+            self.client = Some(
+                Client::builder()
+                    .user_agent(APP_USER_AGENT)
+                    .build()
+                    .expect("Failed to build reqwest client"),
+            );
         }
         self.client.as_ref().unwrap()
     }
@@ -90,9 +122,12 @@ impl PackageAnalyzer {
         let mut footprint = PackageFootprint::new(package);
         let mut file_types = HashMap::new();
 
+        // Get max files configuration once
+        let max_files = get_max_files();
+
         // Use a min-heap to track the largest files
         let mut largest_files_heap: BinaryHeap<Reverse<FileInfo>> =
-            BinaryHeap::with_capacity(MAX_LARGEST_FILES + 1);
+            BinaryHeap::with_capacity(max_files + 1);
 
         for i in 0..archive.len() {
             let file = archive.by_index(i).map_err(|e| {
@@ -117,7 +152,7 @@ impl PackageAnalyzer {
                 let file_info = FileInfo::new(path, size, ext);
 
                 // Efficiently maintain top K largest files
-                if largest_files_heap.len() < MAX_LARGEST_FILES {
+                if largest_files_heap.len() < max_files {
                     largest_files_heap.push(Reverse(file_info));
                 } else if let Some(Reverse(smallest)) = largest_files_heap.peek() {
                     if file_info.size > smallest.size {
@@ -130,33 +165,32 @@ impl PackageAnalyzer {
 
         footprint.file_types = file_types;
 
-        // Extract files from heap and sort
-        footprint.largest_files = largest_files_heap
+        // Collect files from the heap, unwrapping the Reverse
+        let mut largest_files: Vec<FileInfo> = largest_files_heap
             .into_iter()
             .map(|Reverse(file_info)| file_info)
-            .collect::<Vec<_>>();
+            .collect();
 
-        // Sort in descending order of size (largest first)
-        footprint.largest_files.sort_by(|a, b| b.size.cmp(&a.size));
+        // Sort explicitly by size in descending order
+        largest_files.sort_by(|a, b| b.size.cmp(&a.size));
+
+        footprint.largest_files = largest_files;
 
         Ok(footprint)
     }
-}
 
-#[pymethods]
-impl PackageAnalyzer {
-    #[new]
-    pub fn new() -> Self {
-        Self {
-            client: Some(Client::new()),
-        }
-    }
-
+    /// Analyzes a Python package from PyPI.
+    ///
+    /// Downloads and analyzes the wheel file for the specified package
+    /// and returns a PackageFootprint with the analysis results.
+    ///
+    /// The number of largest files tracked can be configured using the
+    /// LIBFOOT_MAX_FILES environment variable.
     pub fn analyze_package(
         &mut self,
         package_name: &str,
         version: Option<String>,
-    ) -> PyResult<PyObject> {
+    ) -> PyResult<PackageFootprint> {
         // 1. Fetch PyPI metadata
         let client = self.get_client();
         let pypi_data = fetch_pypi_metadata_raw(client, package_name, version.as_deref())?;
@@ -170,14 +204,17 @@ impl PackageAnalyzer {
             ))
         })?;
 
-        // Clone the URL to avoid reference issues
         let wheel_url = wheel_info.url.clone();
 
         // 3. Download wheel
         let temp_file = self.download_wheel(&wheel_url)?;
 
-        // 4. Create Package instance
-        let package = Package::new(pypi_data.info.name.clone(), pypi_data.info.version.clone());
+        // 4. Create Package instance with dependencies
+        let package = Package::new(
+            pypi_data.info.name.clone(),
+            pypi_data.info.version.clone(),
+            pypi_data.info.requires_dist.clone().unwrap_or_default(),
+        );
 
         // 5. Analyze wheel contents
         let file = std::fs::File::open(temp_file.path())
@@ -188,41 +225,8 @@ impl PackageAnalyzer {
 
         let footprint = self.analyze_wheel_contents(package, archive)?;
 
-        // Convert to PyObject manually
-        Python::with_gil(|py| {
-            let dict = PyDict::new(py);
-
-            // Package info
-            let pkg_dict = PyDict::new(py);
-            pkg_dict.set_item("name", &footprint.package.name)?;
-            pkg_dict.set_item("version", &footprint.package.version)?;
-            pkg_dict.set_item("dependencies", &footprint.package.dependencies)?;
-            dict.set_item("package", pkg_dict)?;
-
-            // Stats
-            dict.set_item("total_size", footprint.total_size)?;
-            dict.set_item("file_count", footprint.file_count)?;
-
-            // File types
-            let file_types_dict = PyDict::new(py);
-            for (ext, count) in &footprint.file_types {
-                file_types_dict.set_item(ext, count)?;
-            }
-            dict.set_item("file_types", file_types_dict)?;
-
-            // Largest files
-            let largest_files = pyo3::types::PyList::empty(py);
-            for file in &footprint.largest_files {
-                let file_dict = PyDict::new(py);
-                file_dict.set_item("path", &file.path)?;
-                file_dict.set_item("size", file.size)?;
-                file_dict.set_item("file_type", &file.file_type)?;
-                largest_files.append(file_dict)?;
-            }
-            dict.set_item("largest_files", largest_files)?;
-
-            Ok(dict.into())
-        })
+        // Return the struct directly, PyO3 will handle the conversion
+        Ok(footprint)
     }
 }
 
@@ -231,30 +235,37 @@ pub fn fetch_pypi_metadata_raw(
     package_name: &str,
     version: Option<&str>,
 ) -> PyResult<PyPIResponse> {
-    let url = match version {
-        Some(ver) => format!("https://pypi.org/pypi/{}/{}/json", package_name, ver),
-        None => format!("https://pypi.org/pypi/{}/json", package_name),
-    };
+    // Use the caching function
+    fetch_pypi_metadata_cached(package_name, version, || {
+        // This closure is the actual fetch function
+        let url = match version {
+            Some(ver) => format!("https://pypi.org/pypi/{}/{}/json", package_name, ver),
+            None => format!("https://pypi.org/pypi/{}/json", package_name),
+        };
 
-    let response = client
-        .get(&url)
-        .send()
-        .map_err(|e| PyErr::new::<pyo3::exceptions::PyConnectionError, _>(e.to_string()))?;
+        let response = client
+            .get(&url)
+            .send()
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyConnectionError, _>(e.to_string()))?;
 
-    if !response.status().is_success() {
-        return Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
-            "Failed to fetch PyPI metadata: {}",
-            response.status()
-        )));
-    }
+        if !response.status().is_success() {
+            return Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
+                "Failed to fetch PyPI metadata: {}",
+                response.status()
+            )));
+        }
 
-    response
-        .json::<PyPIResponse>()
-        .map_err(|e| PyErr::new::<pyo3::exceptions::PyValueError, _>(e.to_string()))
+        response
+            .json::<PyPIResponse>()
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyValueError, _>(e.to_string()))
+    })
 }
 
 pub fn fetch_pypi_metadata(package_name: &str, version: Option<String>) -> PyResult<PyPIMetadata> {
-    let client = Client::new();
+    let client = Client::builder()
+        .user_agent(APP_USER_AGENT)
+        .build()
+        .expect("Failed to build reqwest client");
     let pypi_data = fetch_pypi_metadata_raw(&client, package_name, version.as_deref())?;
 
     let requires_dist = pypi_data.info.requires_dist.unwrap_or_default();
@@ -270,7 +281,10 @@ pub fn fetch_pypi_metadata(package_name: &str, version: Option<String>) -> PyRes
             .unwrap_or_default(),
         requires_python: pypi_data.info.requires_python,
         requires_dist,
-        package_size: pypi_data.urls.first().map(|f| f.size),
-        raw_data: HashMap::new(),
+        package_size: pypi_data
+            .urls
+            .iter()
+            .find(|f| f.packagetype == "bdist_wheel")
+            .map(|f| f.size),
     })
 }

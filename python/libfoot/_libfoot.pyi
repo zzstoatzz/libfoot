@@ -1,32 +1,6 @@
 from __future__ import annotations
 
-from typing import TypedDict
-
-class FileInfoDict(TypedDict):
-    path: str
-    size: int
-    file_type: str
-
-class PackageDict(TypedDict):
-    name: str
-    version: str
-    dependencies: list[str]
-
-class PackageFootprintDict(TypedDict):
-    package: PackageDict
-    total_size: int
-    file_count: int
-    file_types: dict[str, int]
-    largest_files: list[FileInfoDict]
-
-class PyPIMetadataDict(TypedDict):
-    name: str
-    version: str
-    summary: str
-    release_url: str
-    requires_python: str | None
-    requires_dist: list[str]
-    package_size: int | None
+from libfoot.types import PackageFootprintDict, PyPIMetadataDict
 
 def analyze_package(
     package_name: str, version: str | None = None
@@ -67,5 +41,17 @@ def get_pypi_metadata(
         - requires_python: Python version requirement
         - requires_dist: List of package dependencies
         - package_size: Size of the package in bytes
+    """
+    ...
+
+def clear_cache() -> None:
+    """
+    Clear the PyPI metadata cache.
+    """
+    ...
+
+def get_cache_stats():
+    """
+    Get statistics about the PyPI metadata cache.
     """
     ...

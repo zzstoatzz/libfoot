@@ -16,6 +16,9 @@ classifiers = [
 ]
 dynamic = ["version"]
 
+[project.optional-dependencies]
+display = ["rich>=13.0"]
+
 [dependency-groups]
 dev = ["maturin", "ruff", "ipython", "pre-commit", "pytest"]
 
