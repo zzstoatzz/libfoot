@@ -1,0 +1,8 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# run tests
+- often
+- usethe [justfile](mdc:justfile), e.g. `just test`
