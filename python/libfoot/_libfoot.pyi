@@ -13,12 +13,7 @@ def analyze_package(
         version: Optional specific version to analyze
 
     Returns:
-        A dictionary containing:
-        - package: Information about the package (name, version)
-        - total_size: Total size in bytes
-        - file_count: Number of files in the package
-        - file_types: Count of files by extension
-        - largest_files: List of largest files with their sizes
+        A dictionary containing package analysis results
     """
     ...
 
@@ -33,14 +28,7 @@ def get_pypi_metadata(
         version: Optional specific version to fetch
 
     Returns:
-        A dictionary containing package metadata:
-        - name: Package name
-        - version: Package version
-        - summary: Short description
-        - release_url: URL to the package homepage
-        - requires_python: Python version requirement
-        - requires_dist: List of package dependencies
-        - package_size: Size of the package in bytes
+        A dictionary containing package metadata
     """
     ...
 
@@ -50,7 +38,7 @@ def clear_cache() -> None:
     """
     ...
 
-def get_cache_stats():
+def get_cache_stats() -> tuple[int, int | None, int | None]:
     """
     Get statistics about the PyPI metadata cache.
     """

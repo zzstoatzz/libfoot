@@ -1,8 +1,9 @@
 import pytest
 from libfoot import get_pypi_metadata
+from libfoot.types import PyPIMetadataDict
 
 
-def test_get_metadata_success(requests_metadata):
+def test_get_metadata_success(requests_metadata: PyPIMetadataDict):
     """Test successful metadata retrieval for a known package."""
     metadata = requests_metadata
     assert metadata["name"] == "requests"
@@ -11,7 +12,7 @@ def test_get_metadata_success(requests_metadata):
     assert "requires_dist" in metadata
 
 
-def test_get_metadata_with_version(requests_metadata):
+def test_get_metadata_with_version(requests_metadata: PyPIMetadataDict):
     """Test metadata retrieval with specific version."""
     metadata = requests_metadata
     assert metadata["name"] == "requests"

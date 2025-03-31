@@ -2,24 +2,22 @@
 Example script demonstrating libfoot's rich display functionality.
 
 To run:
-    pip install libfoot[display]
-    python rich_display.py [package_name] [version]
+    uv run --extra display examples/rich_demo.py [package_name] [version]
 
 Example:
-    python rich_display.py requests 2.31.0
+    uv run --extra display examples/rich_demo.py torch 2.3.1
 """
 
 import sys
 
-from libfoot import analyze_package, get_pypi_metadata
+from libfoot import analyze_package
 
-# Try to import the display functions
 try:
-    from libfoot.display import display_analysis, display_metadata
+    from libfoot.display import display_analysis
 
-    HAS_RICH = True
+    has_rich = True
 except ImportError as e:
-    HAS_RICH = False
+    has_rich = False
     print(
         "Pretty display requires the `display` extra. "
         "For example, `uv run --extra display examples/rich_demo.py`"
@@ -29,9 +27,8 @@ except ImportError as e:
 
 
 def main():
-    # Get package name and optional version from command line
     if len(sys.argv) < 2:
-        print("Usage: python rich_display.py [package_name] [version]")
+        print("Usage: python examples/rich_demo.py [package_name] [version]")
         sys.exit(1)
 
     package_name = sys.argv[1]
@@ -39,15 +36,7 @@ def main():
 
     print(f"Analyzing {package_name}{' v' + version if version else ''}...\n")
 
-    # Get and display package metadata
-    print("Fetching metadata...")
-    metadata = get_pypi_metadata(package_name, version)
-    display_metadata(metadata)
-
-    print("\n" + "-" * 50 + "\n")
-
-    # Analyze and display package footprint
-    print("Analyzing package content...")
+    print("Analyzing package...")
     analysis = analyze_package(package_name, version)
     display_analysis(analysis)
 

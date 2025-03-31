@@ -1,4 +1,7 @@
-def test_analyze_package_success(markupsafe_analysis):
+from libfoot.types import PackageFootprintDict
+
+
+def test_analyze_package_success(markupsafe_analysis: PackageFootprintDict):
     """Test successful package analysis."""
     result = markupsafe_analysis
     assert result["package"]["name"] == "MarkupSafe"
@@ -9,7 +12,7 @@ def test_analyze_package_success(markupsafe_analysis):
     assert len(result["largest_files"]) > 0
 
 
-def test_largest_files_sort_order(requests_analysis):
+def test_largest_files_sort_order(requests_analysis: PackageFootprintDict):
     """Test that largest files are properly sorted."""
     files = requests_analysis["largest_files"]
 
@@ -23,7 +26,7 @@ def test_largest_files_sort_order(requests_analysis):
     assert len(files) <= 10
 
 
-def test_file_types_detection(markupsafe_analysis):
+def test_file_types_detection(markupsafe_analysis: PackageFootprintDict):
     """Test that file types are correctly detected."""
     result = markupsafe_analysis
     # Check that .py files are detected

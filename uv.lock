@@ -291,6 +291,7 @@ dev = [
     { name = "ipython", version = "8.18.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.9.*'" },
     { name = "ipython", version = "8.34.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.10.*'" },
     { name = "ipython", version = "9.0.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "libfoot", extra = ["display"] },
     { name = "maturin" },
     { name = "pre-commit", version = "3.5.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
     { name = "pre-commit", version = "4.2.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9'" },
@@ -305,6 +306,7 @@ provides-extras = ["display"]
 [package.metadata.requires-dev]
 dev = [
     { name = "ipython" },
+    { name = "libfoot", extras = ["display"] },
     { name = "maturin" },
     { name = "pre-commit" },
     { name = "pytest" },

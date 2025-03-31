@@ -4,19 +4,14 @@ from __future__ import annotations
 
 from libfoot.types import PackageFootprintDict, PyPIMetadataDict
 
-
-def import_rich():
-    """Import rich modules or raise ImportError with helpful message."""
-    try:
-        from rich.console import Console  # type: ignore
-        from rich.table import Table  # type: ignore
-
-        return Console, Table
-    except ImportError:
-        raise ImportError(
-            "Pretty display requires the `display` extra. "
-            "For example, `uvx 'libfoot[display]'`"
-        )
+try:
+    from rich.console import Console
+    from rich.table import Table
+except ImportError:
+    raise ImportError(
+        "Pretty display requires the `display` extra. "
+        "For example, `uvx 'libfoot[display]'`"
+    )
 
 
 def display_analysis(analysis_data: PackageFootprintDict) -> None:
@@ -26,7 +21,7 @@ def display_analysis(analysis_data: PackageFootprintDict) -> None:
     Args:
         analysis_data: The dictionary returned by analyze_package
     """
-    Console, Table = import_rich()
+
     console = Console()
 
     pkg = analysis_data["package"]
@@ -75,7 +70,6 @@ def display_metadata(metadata: PyPIMetadataDict) -> None:
     Args:
         metadata: The dictionary returned by get_pypi_metadata
     """
-    Console, Table = import_rich()
     console = Console()
 
     console.print(
