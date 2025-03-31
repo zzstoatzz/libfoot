@@ -1,4 +1,5 @@
 use crate::cache::fetch_pypi_metadata_cached;
+use crate::create_client;
 use crate::package::{FileInfo, Package, PackageFootprint, PyPIMetadata};
 use pyo3::prelude::*;
 use reqwest::blocking::Client;
@@ -13,9 +14,6 @@ use zip::ZipArchive;
 
 // Default value for maximum number of largest files to track
 const DEFAULT_MAX_FILES: usize = 10;
-
-// Define user agent string for API requests
-const APP_USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
 
 // Read MAX_LARGEST_FILES from environment variable or use default
 /// Returns the maximum number of largest files to track.
@@ -57,61 +55,54 @@ pub struct PyPIFileInfo {
     pub size: u64,
 }
 
+/// Downloads a wheel file from the given URL.
+///
+/// This function fetches the wheel file from the URL and stores it in a temporary file.
+/// Returns a NamedTempFile containing the downloaded wheel.
+pub fn download_wheel(client: &Client, url: &str) -> PyResult<NamedTempFile> {
+    let mut temp_file = tempfile::Builder::new()
+        .suffix(".whl")
+        .tempfile()
+        .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(e.to_string()))?;
+
+    let mut response = client
+        .get(url)
+        .send()
+        .map_err(|e| PyErr::new::<pyo3::exceptions::PyConnectionError, _>(e.to_string()))?;
+
+    if !response.status().is_success() {
+        return Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
+            "Failed to download wheel: {} ({})",
+            url,
+            response.status()
+        )));
+    }
+
+    response
+        .copy_to(&mut temp_file)
+        .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(e.to_string()))?;
+
+    Ok(temp_file)
+}
+
+/// Find the wheel URL from a list of PyPI file info.
+fn find_wheel_url(files: &[PyPIFileInfo]) -> Option<&PyPIFileInfo> {
+    // Prioritize wheels (.whl files)
+    files.iter().find(|f| f.packagetype == "bdist_wheel")
+}
+
 impl PackageAnalyzer {
     pub fn new() -> Self {
         Self {
-            client: Some(
-                Client::builder()
-                    .user_agent(APP_USER_AGENT)
-                    .build()
-                    .expect("Failed to build reqwest client"),
-            ),
+            client: Some(create_client()),
         }
     }
 
     fn get_client(&mut self) -> &Client {
         if self.client.is_none() {
-            self.client = Some(
-                Client::builder()
-                    .user_agent(APP_USER_AGENT)
-                    .build()
-                    .expect("Failed to build reqwest client"),
-            );
+            self.client = Some(create_client());
         }
         self.client.as_ref().unwrap()
-    }
-
-    fn find_wheel_url<'a>(&self, files: &'a [PyPIFileInfo]) -> Option<&'a PyPIFileInfo> {
-        // Prioritize wheels (.whl files)
-        files.iter().find(|f| f.packagetype == "bdist_wheel")
-    }
-
-    fn download_wheel(&mut self, url: &str) -> PyResult<NamedTempFile> {
-        let client = self.get_client();
-
-        let mut temp_file = tempfile::Builder::new()
-            .suffix(".whl")
-            .tempfile()
-            .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(e.to_string()))?;
-
-        let mut response = client
-            .get(url)
-            .send()
-            .map_err(|e| PyErr::new::<pyo3::exceptions::PyConnectionError, _>(e.to_string()))?;
-
-        if !response.status().is_success() {
-            return Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
-                "Failed to download wheel: {} ({})",
-                url,
-                response.status()
-            )));
-        }
-
-        response
-            .copy_to(&mut temp_file)
-            .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(e.to_string()))?;
-
-        Ok(temp_file)
     }
 
     fn analyze_wheel_contents<R: Read + std::io::Seek>(
@@ -195,8 +186,8 @@ impl PackageAnalyzer {
         let client = self.get_client();
         let pypi_data = fetch_pypi_metadata_raw(client, package_name, version.as_deref())?;
 
-        // 2. Find wheel URL
-        let wheel_info = self.find_wheel_url(&pypi_data.urls).ok_or_else(|| {
+        // 2. Find wheel URL - now using the standalone function
+        let wheel_info = find_wheel_url(&pypi_data.urls).ok_or_else(|| {
             PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
                 "No wheel found for package: {}, version: {}",
                 package_name,
@@ -206,8 +197,8 @@ impl PackageAnalyzer {
 
         let wheel_url = wheel_info.url.clone();
 
-        // 3. Download wheel
-        let temp_file = self.download_wheel(&wheel_url)?;
+        // 3. Download wheel - now using the standalone function
+        let temp_file = download_wheel(client, &wheel_url)?;
 
         // 4. Create Package instance with dependencies
         let package = Package::new(
@@ -261,12 +252,12 @@ pub fn fetch_pypi_metadata_raw(
     })
 }
 
-pub fn fetch_pypi_metadata(package_name: &str, version: Option<String>) -> PyResult<PyPIMetadata> {
-    let client = Client::builder()
-        .user_agent(APP_USER_AGENT)
-        .build()
-        .expect("Failed to build reqwest client");
-    let pypi_data = fetch_pypi_metadata_raw(&client, package_name, version.as_deref())?;
+pub fn fetch_pypi_metadata(
+    client: &Client,
+    package_name: &str,
+    version: Option<String>,
+) -> PyResult<PyPIMetadata> {
+    let pypi_data = fetch_pypi_metadata_raw(client, package_name, version.as_deref())?;
 
     let requires_dist = pypi_data.info.requires_dist.unwrap_or_default();
 

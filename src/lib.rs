@@ -6,6 +6,18 @@ use analyzer::{fetch_pypi_metadata, PackageAnalyzer};
 use cache::{clear_metadata_cache, get_cache_info};
 use package::{PackageFootprint, PyPIMetadata};
 use pyo3::prelude::*;
+use reqwest::blocking::Client;
+
+// Define user agent string for API requests
+const APP_USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
+
+// Create a new Client with the appropriate user agent
+pub fn create_client() -> Client {
+    Client::builder()
+        .user_agent(APP_USER_AGENT)
+        .build()
+        .expect("Failed to build reqwest client")
+}
 
 #[pyfunction]
 #[pyo3(signature = (package_name, version = None))]
@@ -17,7 +29,8 @@ fn analyze_package(package_name: &str, version: Option<String>) -> PyResult<Pack
 #[pyfunction]
 #[pyo3(signature = (package_name, version = None))]
 fn get_pypi_metadata(package_name: &str, version: Option<String>) -> PyResult<PyPIMetadata> {
-    fetch_pypi_metadata(package_name, version)
+    let client = create_client();
+    fetch_pypi_metadata(&client, package_name, version)
 }
 
 /// Clears the PyPI metadata cache
