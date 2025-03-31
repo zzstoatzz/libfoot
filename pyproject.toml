@@ -20,7 +20,7 @@ dynamic = ["version"]
 display = ["rich>=13.0"]
 
 [dependency-groups]
-dev = ["maturin", "ruff", "ipython", "pre-commit", "pytest"]
+dev = ["maturin", "ruff", "ipython", "pre-commit", "pytest", "libfoot[display]"]
 
 [tool.maturin]
 features = ["pyo3/extension-module"]

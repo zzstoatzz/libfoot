@@ -1,4 +1,6 @@
-from typing import NamedTuple, Optional
+from __future__ import annotations
+
+from typing import NamedTuple
 
 from ._libfoot import (
     analyze_package,
@@ -12,8 +14,8 @@ class CacheStats(NamedTuple):
     """Statistics about the PyPI metadata cache."""
 
     size: int
-    oldest_entry_age: Optional[int]
-    newest_entry_age: Optional[int]
+    oldest_entry_age: int | None
+    newest_entry_age: int | None
 
 
 def get_cache_stats() -> CacheStats:
