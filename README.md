@@ -60,14 +60,25 @@ cd libfoot
 uv sync
 ```
 
-Run tests:
+I use [`just`](https://github.com/casey/just) as a command runner:
 
 ```bash
-uv run --frozen pytest
+# build the project
+just build
+
+# run tests (builds beforehand automatically)
+just test
+
+# typecheck the project
+just typecheck
+
+# run the demo
+just demo
 ```
-
-The project uses GitHub Actions for automated linting and testing across multiple Python versions and platforms.
-
 ## license
 
 [MIT License](LICENSE)
+
+## feedback
+
+If you have any feedback, please [open an issue](https://github.com/zzstoatzz/libfoot/issues) or [create a discussion](https://github.com/zzstoatzz/libfoot/discussions).
