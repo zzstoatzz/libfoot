@@ -12,6 +12,13 @@ on:
     tags:
       - '*'
   pull_request:
+    paths:
+      - 'src/**'
+      - 'python/**'
+      - 'tests/**'
+      - 'pyproject.toml'
+      - 'Cargo.toml'
+      
   workflow_dispatch:
 
 permissions:
