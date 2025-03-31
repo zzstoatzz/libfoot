@@ -4,7 +4,6 @@
 [![Python Versions](https://img.shields.io/pypi/pyversions/libfoot)](https://pypi.org/project/libfoot/)
 [![Tests](https://github.com/zzstoatzz/libfoot/actions/workflows/test.yml/badge.svg)](https://github.com/zzstoatzz/libfoot/actions/workflows/test.yml)
 [![Lint](https://github.com/zzstoatzz/libfoot/actions/workflows/lint.yml/badge.svg)](https://github.com/zzstoatzz/libfoot/actions/workflows/lint.yml)
-[![Downloads](https://static.pepy.tech/badge/libfoot)](https://pepy.tech/project/libfoot)
 [![License](https://img.shields.io/github/license/zzstoatzz/libfoot)](https://github.com/zzstoatzz/libfoot/blob/main/LICENSE)
 
 a tool for analyzing the footprint of a Python package, written in Rust with python bindings via [`pyo3`](https://github.com/pyo3/pyo3)
