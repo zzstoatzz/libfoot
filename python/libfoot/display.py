@@ -2,16 +2,10 @@
 
 from __future__ import annotations
 
-from libfoot.types import PackageFootprintDict, PyPIMetadataDict
+from rich.console import Console
+from rich.table import Table
 
-try:
-    from rich.console import Console
-    from rich.table import Table
-except ImportError:
-    raise ImportError(
-        "Pretty display requires the `display` extra. "
-        "For example, `uvx 'libfoot[display]'`"
-    )
+from libfoot.types import PackageFootprintDict, PyPIMetadataDict
 
 
 def display_analysis(analysis_data: PackageFootprintDict) -> None:

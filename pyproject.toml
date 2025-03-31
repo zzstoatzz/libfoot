@@ -15,12 +15,13 @@ classifiers = [
     "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dynamic = ["version"]
+dependencies = ["rich>=13.0"]
 
-[project.optional-dependencies]
-display = ["rich>=13.0"]
+[project.scripts]
+libfoot = "libfoot.cli:main"
 
 [dependency-groups]
-dev = ["maturin", "ruff", "ipython", "pre-commit", "pytest", "libfoot[display]"]
+dev = ["maturin", "ruff", "ipython", "pre-commit", "pyright", "pytest"]
 
 [tool.maturin]
 features = ["pyo3/extension-module"]
@@ -28,6 +29,8 @@ python-source = "python"
 module-name = "libfoot._libfoot"
 bindings = "pyo3"
 
+[tool.pyright]
+include = ["libfoot/**/*.py", "tests/**/*.py", "examples/**/*.py"]
 
 [tool.pytest]
 testpaths = ["tests"]

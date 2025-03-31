@@ -73,3 +73,6 @@ docs/_build/
 
 # LLM dev resources
 feedback/
+
+# Environment variables
+.env
