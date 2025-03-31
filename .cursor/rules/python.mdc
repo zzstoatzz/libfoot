@@ -7,3 +7,9 @@ alwaysApply: false
 - use dict[str, Any], NEVER typing.Dict
 - use `from __future__ import annotations` when using 3.10+ specific annotations
 - aggressively minimal and pythonic
+
+## use uv (do NOT use pip)
+- run a script: `uv run --with pandas some_script.py`
+- run tests: `uv run pytest -n3 tests/client`
+- run python code directly: `uv run -p 3.12 python -c 'import prefect;print(prefect.__version__)'`
+- install dependencies (including the `dev` group): `uv sync`

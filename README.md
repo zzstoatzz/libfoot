@@ -1,25 +1,11 @@
-# libfoot
+# `libfoot`
 
-A lightweight Rust-powered Python library for analyzing Python package footprints.
-
-## Features
-
-- Fast and efficient package analysis using Rust
-- Analyze package size, file types, and largest files
-- Fetch PyPI metadata for packages
-- Built-in caching for better performance
-- Optional rich text display for beautiful output
+a tool for analyzing the footprint of a Python package, written in Rust with python bindings via [`pyo3`](https://github.com/pyo3/pyo3)
 
 ## Installation
-
+Add `libfoot` to your project:
 ```bash
-pip install libfoot
-```
-
-With rich display support:
-
-```bash
-pip install libfoot[display]
+uv add libfoot
 ```
 
 ## Usage
@@ -39,12 +25,13 @@ metadata = get_pypi_metadata("requests", "2.31.0")
 print(f"Summary: {metadata['summary']}")
 ```
 
-### Rich Display (Optional)
+### Rich Display
 
-For beautiful terminal output, install with the `display` extra and use the display functions:
+libfoot includes rich display functionality:
 
 ```python
-from libfoot import analyze_package, get_pypi_metadata, display_analysis, display_metadata
+from libfoot import analyze_package, get_pypi_metadata
+from libfoot.display import display_analysis, display_metadata
 
 # Analyze and display with rich formatting
 result = analyze_package("requests", "2.31.0")
@@ -55,9 +42,27 @@ metadata = get_pypi_metadata("requests", "2.31.0")
 display_metadata(metadata)
 ```
 
+### Command Line Interface
+
+libfoot provides a command-line interface for easy access to its functionality:
+
+```bash
+# Analyze a package (with rich output)
+libfoot analyze requests
+
+# Specify a version
+libfoot analyze requests -v 2.31.0 
+
+# Get package metadata
+libfoot metadata requests
+
+# Output in JSON format
+libfoot analyze requests --json
+```
+
 ### Cache Management
 
-libfoot caches PyPI metadata for better performance:
+libfoot caches PyPI metadata within a Python process for better performance:
 
 ```python
 from libfoot import clear_cache, get_cache_stats
@@ -94,14 +99,16 @@ To build from source:
 ```bash
 git clone https://github.com/zzstoatzz/libfoot
 cd libfoot
-pip install -e ".[dev]"
+uv sync
 ```
 
 Run tests:
 
 ```bash
-pytest
+uv run --frozen pytest
 ```
+
+The project uses GitHub Actions for automated linting and testing across multiple Python versions and platforms.
 
 ## License
 

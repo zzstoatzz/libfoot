@@ -8,6 +8,7 @@ from ._libfoot import (
     get_pypi_metadata,
 )
 from ._libfoot import get_cache_stats as _get_cache_stats
+from .display import display_analysis, display_metadata
 
 
 class CacheStats(NamedTuple):
@@ -38,4 +39,6 @@ __all__ = [
     "get_cache_stats",
     "get_pypi_metadata",
     "CacheStats",
+    "display_analysis",
+    "display_metadata",
 ]
