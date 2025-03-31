@@ -16,7 +16,7 @@ from libfoot.display import display_analysis
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python examples/rich_demo.py [package_name] [version]")
+        print("Usage: python examples/demo.py [package_name] [version]")
         sys.exit(1)
 
     package_name = sys.argv[1]
